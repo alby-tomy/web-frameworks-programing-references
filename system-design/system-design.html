@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>System Design Fundamentals — Comprehensive Concept Breakdown</title>
+<link rel="stylesheet" href="../shared/shared.css">
+<link rel="stylesheet" href="system-design.css">
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sb-brand">
+    <div class="sb-brand-tag">System Design</div>
+    <div class="sb-title">System Design <span>Fundamentals</span></div>
+    <div class="sb-sub">10 core concepts · Architecture to Security</div>
+  </div>
+  <div class="sb-search">
+    <input type="text" id="sd-search" placeholder="Search concepts…"/>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-group">
+      <div class="sb-group-label">Architecture</div>
+      <a href="#arch-shift"     class="sb-link"><span class="sb-num">01</span>The Architectural Shift</a>
+      <a href="#foundations"    class="sb-link"><span class="sb-num">02</span>System Foundations</a>
+      <a href="#data-layer"     class="sb-link"><span class="sb-num">03</span>Data Layer: SQL vs NoSQL</a>
+    </div>
+    <div class="sb-group">
+      <div class="sb-group-label">Scalability</div>
+      <a href="#scaling"        class="sb-link"><span class="sb-num">04</span>Scaling Strategies</a>
+      <a href="#load-balancing" class="sb-link"><span class="sb-num">05</span>Load Balancing</a>
+      <a href="#spof"           class="sb-link"><span class="sb-num">06</span>Single Point of Failure</a>
+    </div>
+    <div class="sb-group">
+      <div class="sb-group-label">APIs & Networking</div>
+      <a href="#api-design"     class="sb-link"><span class="sb-num">07</span>API Design &amp; Styles</a>
+      <a href="#protocols"      class="sb-link"><span class="sb-num">08</span>Network Protocols</a>
+    </div>
+    <div class="sb-group">
+      <div class="sb-group-label">Security</div>
+      <a href="#auth"           class="sb-link"><span class="sb-num">09</span>Auth &amp; Authorization</a>
+      <a href="#protection"     class="sb-link"><span class="sb-num">10</span>System Protection</a>
+    </div>
+  </div>
+</nav>
+<button id="mob-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+
+<div id="main">
+
+<!-- HERO -->
+<div id="hero">
+  <div class="hero-eyebrow">System Design Fundamentals</div>
+  <h1 class="hero-title">
+    <span class="b">10 Core Concepts</span><br/>
+    from Architecture to <span class="p">Security</span>
+  </h1>
+  <p class="hero-desc">A comprehensive breakdown of system design — covering architectural thinking, data strategies, scaling patterns, API styles, network protocols, and security techniques that define senior engineering.</p>
+  <div class="chips">
+    <span class="chip b">Architecture</span>
+    <span class="chip b">Scaling</span>
+    <span class="chip p">Load Balancing</span>
+    <span class="chip g">SQL vs NoSQL</span>
+    <span class="chip g">REST · GraphQL · gRPC</span>
+    <span class="chip a">TCP · UDP</span>
+    <span class="chip a">JWT · OAuth 2.0</span>
+    <span class="chip r">Security &amp; Protection</span>
+  </div>
+</div>
+
+<!-- ═══════════════ 01 THE ARCHITECTURAL SHIFT ═══════════════ -->
+<section class="chapter" id="arch-shift">
+  <div class="ch-head">
+    <span class="ch-num">01</span>
+    <h2 class="ch-title">The Architectural Shift</h2>
+    <span class="badge badge-b">Mindset</span>
+  </div>
+
+  <p class="prose">The transition from mid-level developer to senior engineer is defined by a shift in focus — from <strong>writing code</strong> to mastering <strong>high-level architectural design</strong>. Mid-level developers function effectively within mature systems with clear requirements but often freeze when asked to design from scratch.</p>
+  <p class="prose">Senior engineers resolve architectural bottlenecks where requirements are undefined. They navigate rough requirements, weigh design trade-offs, and build production-ready systems from the ground up.</p>
+
+  <h3>Why Companies Value Architectural Decision-Making</h3>
+  <div class="g2">
+    <div class="box box-b">
+      <div class="box-title">🧭 Navigating Ambiguity</div>
+      <div class="box-body">Seniors translate <strong>vague business needs</strong> into concrete, scalable technical architectures — without waiting for complete specs.</div>
+    </div>
+    <div class="box box-p">
+      <div class="box-title">⏳ System Longevity</div>
+      <div class="box-body">Architectural decisions directly impact <strong>long-term efficiency, maintenance, and scalability</strong> of the software — often for years.</div>
+    </div>
+    <div class="box box-g">
+      <div class="box-title">🗄️ Data Strategy</div>
+      <div class="box-body">Expert storage and data-layer choices ensure the system <strong>remains performant</strong> as user demand grows by orders of magnitude.</div>
+    </div>
+    <div class="box box-a">
+      <div class="box-title">💼 Business Impact</div>
+      <div class="box-body">Companies invest in senior talent to make <strong>high-stakes decisions</strong> that directly affect the customer experience and the bottom line.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 02 SYSTEM FOUNDATIONS ═══════════════ -->
+<section class="chapter" id="foundations">
+  <div class="ch-head">
+    <span class="ch-num">02</span>
+    <h2 class="ch-title">System Foundations: The Single-Server Model</h2>
+    <span class="badge badge-b">Core</span>
+  </div>
+
+  <p class="prose">Architectural mastery begins with the <strong>"start small" philosophy</strong>. By understanding a single-server setup — where the web application, database, and cache reside on one machine — we can visualise the core request-response flow before introducing distributed complexity.</p>
+
+  <h3>The Request-Response Flow</h3>
+  <div class="flow">
+    <div class="fb b"><div class="fb-l">Client</div><div class="fb-n">Domain Input</div></div><div class="fa">→</div>
+    <div class="fb p"><div class="fb-l">DNS Lookup</div><div class="fb-n">Resolves IP</div></div><div class="fa">→</div>
+    <div class="fb a"><div class="fb-l">IP Retrieval</div><div class="fb-n">Address Returned</div></div><div class="fa">→</div>
+    <div class="fb g"><div class="fb-l">HTTP Request</div><div class="fb-n">Data Requested</div></div><div class="fa">→</div>
+    <div class="fb r"><div class="fb-l">Server</div><div class="fb-n">HTML / JSON</div></div>
+  </div>
+
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Domain Input</div><div class="step-desc">Client enters a domain name (e.g., <strong>app.demo.com</strong>).</div></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">DNS Lookup</div><div class="step-desc">The DNS maps the domain to the server's <strong>IP address</strong> — the physical location of the server on the internet.</div></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">IP Retrieval</div><div class="step-desc">The DNS provider sends the <strong>IP address</strong> back to the client.</div></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">HTTP Request</div><div class="step-desc">Client uses the IP to send an <strong>HTTP request</strong> for specific data.</div></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><div class="step-title">Server Processing</div><div class="step-desc">The server processes the request and returns <strong>HTML or JSON</strong>.</div></div></div>
+  </div>
+
+  <h3>Web vs. Mobile Application Interaction</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Feature</th><th>Web Applications</th><th>Mobile Applications</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Interaction Mode</strong></td><td>Browser-based</td><td>App-based API calls</td></tr>
+        <tr><td><strong>Data Requirements</strong></td><td>Handles logic, storage, and presentation (HTML/CSS/JS)</td><td>Focuses on business logic and raw data retrieval</td></tr>
+        <tr><td><strong>Response Format</strong></td><td>Primarily HTML/CSS/JS</td><td>Lightweight <strong>JSON</strong> for easier interpretation</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════ 03 DATA LAYER ═══════════════ -->
+<section class="chapter" id="data-layer">
+  <div class="ch-head">
+    <span class="ch-num">03</span>
+    <h2 class="ch-title">The Data Layer: SQL vs NoSQL</h2>
+    <span class="badge badge-g">Storage</span>
+  </div>
+
+  <p class="prose">As traffic increases, you must separate the <strong>web tier</strong> from the <strong>data tier</strong> to allow for independent scaling. Choosing the right database type is one of the most consequential architectural decisions.</p>
+
+  <h3>Relational Databases (RDBMS)</h3>
+  <p class="prose">Organise data into structured <strong>tables, rows, and columns</strong>. Industry standard for data with clear, well-defined relationships. ACID compliance is their defining characteristic.</p>
+
+  <div class="callout callout-tip">
+    <div class="callout-icon">💡</div>
+    <p><strong>ACID in plain English — Bank Transfer Example:</strong> Moving money from Account A to Account B must satisfy all four ACID properties simultaneously.</p>
+  </div>
+
+  <div class="g2">
+    <div class="box box-b">
+      <div class="box-title">⚛️ Atomicity</div>
+      <div class="box-body">The entire transfer is <strong>one indivisible unit</strong>. If the system fails after deducting from A but before adding to B, the entire transaction rolls back — money cannot "disappear."</div>
+    </div>
+    <div class="box box-g">
+      <div class="box-title">✅ Consistency</div>
+      <div class="box-body">The database moves from <strong>one valid state to another</strong>. The combined total balance of both accounts must remain the same before and after the transfer.</div>
+    </div>
+    <div class="box box-p">
+      <div class="box-title">🔒 Isolation</div>
+      <div class="box-body">If multiple transfers to Account B happen simultaneously, the transactions <strong>do not interfere or overwrite</strong> each other — each runs as if it were the only one.</div>
+    </div>
+    <div class="box box-a">
+      <div class="box-title">💾 Durability</div>
+      <div class="box-body">Once the transfer is confirmed, the record is <strong>saved permanently</strong> — even if the server crashes immediately afterward.</div>
+    </div>
+  </div>
+
+  <h3>Non-Relational Databases (NoSQL)</h3>
+  <p class="prose">Provide high-speed access and flexibility for unstructured or massive datasets. Four major storage models cover different use cases.</p>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-head"><div class="card-icon">📄</div><div class="card-label" style="color:var(--sd)">Document Store</div></div>
+      <div class="card-title">JSON-like Documents</div>
+      <div class="card-body">Data stored as flexible documents. Ideal for content management and user profiles.<br/><strong>Examples:</strong> MongoDB, CouchDB</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-icon">🏛️</div><div class="card-label" style="color:var(--sd2)">Wide-Column Store</div></div>
+      <div class="card-title">Massive Scale Writes</div>
+      <div class="card-body">Optimised for high-volume writes at massive scale. Ideal for time-series and IoT data.<br/><strong>Examples:</strong> Cassandra, Cosmos DB</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-icon">🕸️</div><div class="card-label" style="color:var(--emerald)">Graph Store</div></div>
+      <div class="card-title">Entities &amp; Relationships</div>
+      <div class="card-body">Focuses on nodes and the connections between them. Ideal for social networks and recommendations.<br/><strong>Examples:</strong> Neo4j, Amazon Neptune</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-icon">⚡</div><div class="card-label" style="color:var(--amber)">Key-Value Store</div></div>
+      <div class="card-title">Lightning-Fast RAM Storage</div>
+      <div class="card-body">Simple, extremely fast storage primarily in RAM. Ideal for caching and sessions.<br/><strong>Examples:</strong> Redis, Memcached</div>
+    </div>
+  </div>
+
+  <h3>Database Selection Criteria</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Criteria</th><th>SQL (Relational)</th><th>NoSQL (Non-Relational)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Structure</strong></td><td>Structured tables and rows</td><td>Unstructured / Flexible (JSON, Key-value)</td></tr>
+        <tr><td><strong>Consistency</strong></td><td>Strong transactional integrity (ACID)</td><td>Optimised for low latency and high availability</td></tr>
+        <tr><td><strong>Latency</strong></td><td>Higher due to complex joins</td><td>Extremely low latency</td></tr>
+        <tr><td><strong>Scalability</strong></td><td>Generally Vertical</td><td>Designed for Horizontal (Massive Scale)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════ 04 SCALING ═══════════════ -->
+<section class="chapter" id="scaling">
+  <div class="ch-head">
+    <span class="ch-num">04</span>
+    <h2 class="ch-title">Scaling Strategies</h2>
+    <span class="badge badge-p">Capacity</span>
+  </div>
+
+  <p class="prose">Scaling is the process of expanding your system's capacity to handle increased user demand. Two fundamentally different approaches exist, each with distinct trade-offs.</p>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-head"><div class="card-icon">⬆️</div><div class="card-label" style="color:var(--amber)">Vertical Scaling</div></div>
+      <div class="card-title">Scale Up — Stronger Machine</div>
+      <div class="card-body">
+        Adding more power (CPU, RAM) to a single existing server.
+        <ul style="margin-top:10px;padding-left:16px;">
+          <li style="color:var(--red);margin-bottom:4px;">⚠ <strong style="color:var(--text)">Resource Ceiling</strong> — every server has a hard hardware limit</li>
+          <li style="color:var(--red);margin-bottom:4px;">⚠ <strong style="color:var(--text)">No Redundancy</strong> — no backup if the server fails</li>
+          <li style="color:var(--red);">⚠ <strong style="color:var(--text)">Single Point of Failure</strong> — entire app goes offline if it goes down</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-icon">↔️</div><div class="card-label" style="color:var(--sd)">Horizontal Scaling</div></div>
+      <div class="card-title">Scale Out — More Machines</div>
+      <div class="card-body">
+        Adding more servers to distribute the load across the pool.
+        <ul style="margin-top:10px;padding-left:16px;">
+          <li style="color:var(--emerald);margin-bottom:4px;">✓ <strong style="color:var(--text)">Fault Tolerance</strong> — if one server fails, others serve traffic</li>
+          <li style="color:var(--emerald);margin-bottom:4px;">✓ <strong style="color:var(--text)">No Hard Ceiling</strong> — add servers as demand grows</li>
+          <li style="color:var(--emerald);">✓ <strong style="color:var(--text)">Superior for High Traffic</strong> — the industry-standard approach</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow" style="margin-top:24px;">
+    <div class="fb a"><div class="fb-l">Vertical</div><div class="fb-n">1 Big Server</div></div><div class="fa">vs</div>
+    <div class="fb b"><div class="fb-l">Horizontal</div><div class="fb-n">N Servers</div></div><div class="fa">→</div>
+    <div class="fb g"><div class="fb-l">Load Balancer</div><div class="fb-n">Distributes Load</div></div>
+  </div>
+</section>
+
+<!-- ═══════════════ 05 LOAD BALANCING ═══════════════ -->
+<section class="chapter" id="load-balancing">
+  <div class="ch-head">
+    <span class="ch-num">05</span>
+    <h2 class="ch-title">Load Balancing Logic and Strategies</h2>
+    <span class="badge badge-b">Availability</span>
+  </div>
+
+  <p class="prose">In a horizontal scaling setup, a <strong>Load Balancer</strong> acts as the "gatekeeper," distributing incoming requests across a pool of servers to prevent any single machine from becoming a bottleneck.</p>
+
+  <h3>Distribution Algorithms</h3>
+  <div class="algo-grid">
+    <div class="algo-card">
+      <div class="algo-name"><span class="algo-num">01</span>Round Robin</div>
+      <div class="algo-when">When: Identical server specs</div>
+      <div class="algo-desc">Sequential rotation through the server pool. Simple and predictable.</div>
+    </div>
+    <div class="algo-card">
+      <div class="algo-name"><span class="algo-num">02</span>Least Connections</div>
+      <div class="algo-when">When: Variable session lengths</div>
+      <div class="algo-desc">Routes to the server with the fewest active sessions.</div>
+    </div>
+    <div class="algo-card">
+      <div class="algo-name"><span class="algo-num">03</span>Least Response Time</div>
+      <div class="algo-when">When: Speed is the priority</div>
+      <div class="algo-desc">Routes to the most responsive server. Best when servers have different capabilities.</div>
+    </div>
+    <div class="algo-card">
+      <div class="algo-name"><span class="algo-num">04</span>IP Hash</div>
+      <div class="algo-when">When: Client needs sticky sessions</div>
+      <div class="algo-desc">Client IP mapped to a specific server. Ensures consistent connections for local state.</div>
+    </div>
+    <div class="algo-card">
+      <div class="algo-name"><span class="algo-num">05</span>Weighted</div>
+      <div class="algo-when">When: Mixed server capacities</div>
+      <div class="algo-desc">Traffic assigned by capacity weight. Use when pool has servers of different specs (e.g., 16GB vs 64GB RAM).</div>
+    </div>
+    <div class="algo-card">
+      <div class="algo-name"><span class="algo-num">06</span>Geographical</div>
+      <div class="algo-when">When: Global services</div>
+      <div class="algo-desc">Routes to the server physically closest to the user. Minimises latency at global scale.</div>
+    </div>
+    <div class="algo-card">
+      <div class="algo-name"><span class="algo-num">07</span>Consistent Hashing</div>
+      <div class="algo-when">When: Dynamic server pools</div>
+      <div class="algo-desc">Hash ring maps users to servers. Minimises data redistribution when servers are added or removed.</div>
+    </div>
+  </div>
+
+  <h3>Availability Features</h3>
+  <div class="box box-g">
+    <div class="box-title">❤️ Health Checks</div>
+    <div class="box-body">The load balancer <strong>continuously monitors server status</strong>. If a server fails a check, it is flagged offline and removed from the rotation until it recovers — automatically, without manual intervention.</div>
+  </div>
+
+  <h3>Implementation Tiers</h3>
+  <div class="g3">
+    <div class="box box-b">
+      <div class="box-title">💻 Software</div>
+      <div class="box-body">Installed on existing servers. Flexible and cost-effective.<br/><strong>e.g., Nginx, HAProxy</strong></div>
+    </div>
+    <div class="box box-a">
+      <div class="box-title">🖥️ Hardware</div>
+      <div class="box-body">High-performance physical appliances. Maximum throughput.<br/><strong>e.g., F5, Citrix</strong></div>
+    </div>
+    <div class="box box-p">
+      <div class="box-title">☁️ Cloud-based</div>
+      <div class="box-body">Managed services with auto-scaling, integrated security and monitoring. <strong>Senior-preferred</strong>.<br/><strong>e.g., AWS ELB, Azure LB</strong></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 06 SPOF ═══════════════ -->
+<section class="chapter" id="spof">
+  <div class="ch-head">
+    <span class="ch-num">06</span>
+    <h2 class="ch-title">Single Point of Failure (SPOF)</h2>
+    <span class="badge badge-r">Risk</span>
+  </div>
+
+  <p class="prose">An <strong>SPOF</strong> is any component that, if it fails, brings down the entire system. Identifying and eliminating SPOFs is a core senior engineering responsibility.</p>
+
+  <div class="g3">
+    <div class="box box-r">
+      <div class="box-title">📉 Reliability</div>
+      <div class="box-body">Leads to <strong>total downtime</strong> and direct business loss. Every minute offline has a measurable revenue cost.</div>
+    </div>
+    <div class="box box-a">
+      <div class="box-title">⚙️ Scalability</div>
+      <div class="box-body">Non-redundant components become <strong>bottlenecks</strong> as the system grows — choking throughput at the weakest link.</div>
+    </div>
+    <div class="box box-p">
+      <div class="box-title">🎯 Security</div>
+      <div class="box-body">Attackers <strong>target SPOFs</strong> (like a single load balancer) to execute successful DDoS attacks that take down the entire service.</div>
+    </div>
+  </div>
+
+  <h3>Mitigation Strategies</h3>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">Redundancy</div>
+        <div class="step-desc">Implement <strong>multiple load balancers</strong> so others automatically take over during a failure. No single node should be irreplaceable.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">Continuous Monitoring</div>
+        <div class="step-desc"><strong>Track the health</strong> of every critical component in real time. Detect degradation before it becomes a full outage.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">Self-Healing Systems</div>
+        <div class="step-desc">Automatically <strong>spin up new instances</strong> to replace failed ones without manual intervention — the system heals itself.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 07 API DESIGN ═══════════════ -->
+<section class="chapter" id="api-design">
+  <div class="ch-head">
+    <span class="ch-num">07</span>
+    <h2 class="ch-title">API Design and Architectural Styles</h2>
+    <span class="badge badge-p">Interfaces</span>
+  </div>
+
+  <p class="prose">APIs are the <strong>contracts</strong> that define how components interact. Good API design is as important as good database design — it determines how easily your system can evolve and integrate.</p>
+
+  <h3>Design Principles</h3>
+  <div class="g2">
+    <div class="box box-b"><div class="box-title">🔠 Consistency</div><div class="box-body">Use uniform <strong>naming conventions</strong> (plural nouns) and casing (e.g., camelCase) across all endpoints.</div></div>
+    <div class="box box-g"><div class="box-title">✨ Simplicity</div><div class="box-body">Designs should be <strong>intuitive enough</strong> for developers to use without constant documentation reference.</div></div>
+    <div class="box box-r"><div class="box-title">🔐 Security</div><div class="box-body">Enforce <strong>authentication, authorization</strong>, and strict input validation on every endpoint.</div></div>
+    <div class="box box-a"><div class="box-title">⚡ Performance</div><div class="box-body">Implement <strong>pagination</strong>, minimise payloads, and reduce round trips wherever possible.</div></div>
+  </div>
+
+  <h3>Style Comparison</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Feature</th><th>REST</th><th>GraphQL</th><th>gRPC</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Philosophy</strong></td><td>Resource-based (Nouns)</td><td>Query-based (Client-specified)</td><td>Procedure-based (Remote Calls)</td></tr>
+        <tr><td><strong>Transport</strong></td><td>HTTP</td><td>HTTP</td><td>HTTP/2</td></tr>
+        <tr><td><strong>Primary Use</strong></td><td>Web &amp; Mobile apps</td><td>Complex UIs with nested data</td><td>Internal Microservices</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>REST — Nouns over Verbs</h3>
+  <p class="prose">REST focuses on <strong>resources, not actions</strong> — e.g., <code>/products</code> instead of <code>/getProducts</code>. HTTP methods express the action.</p>
+  <div class="g3" style="margin-bottom:20px;">
+    <div class="box box-g"><div class="box-title">GET</div><div class="box-body">Read — retrieve a resource</div></div>
+    <div class="box box-b"><div class="box-title">POST</div><div class="box-body">Create — add a new resource</div></div>
+    <div class="box box-p"><div class="box-title">PUT</div><div class="box-body">Full Update — replace entirely</div></div>
+    <div class="box box-a"><div class="box-title">PATCH</div><div class="box-body">Partial Update — modify fields</div></div>
+    <div class="box box-r"><div class="box-title">DELETE</div><div class="box-body">Remove — delete a resource</div></div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Category</th><th>Meaning</th><th>Examples</th></tr></thead>
+      <tbody>
+        <tr><td><strong style="color:var(--emerald)">2xx</strong></td><td>Success</td><td>200 OK · 201 Created</td></tr>
+        <tr><td><strong style="color:var(--sd)">3xx</strong></td><td>Redirection</td><td>301 Moved Permanently</td></tr>
+        <tr><td><strong style="color:var(--amber)">4xx</strong></td><td>Client Error</td><td>400 Bad Request · 404 Not Found</td></tr>
+        <tr><td><strong style="color:var(--red)">5xx</strong></td><td>Server Error</td><td>500 Internal Server Error</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>GraphQL — Solving Over &amp; Under-Fetching</h3>
+  <div class="g2">
+    <div class="box box-r">
+      <div class="box-title">📦 Over-fetching</div>
+      <div class="box-body">REST returns <strong>more data than needed</strong>. The client must discard unused fields, wasting bandwidth and parse time.</div>
+    </div>
+    <div class="box box-a">
+      <div class="box-title">📭 Under-fetching</div>
+      <div class="box-body">REST returns <strong>too little data</strong>, requiring multiple requests (N+1 problem) to assemble a complete view.</div>
+    </div>
+  </div>
+  <div class="g3" style="margin-top:12px;">
+    <div class="box box-g"><div class="box-title">Query</div><div class="box-body">Equivalent to REST GET — read data with precise field selection.</div></div>
+    <div class="box box-b"><div class="box-title">Mutation</div><div class="box-body">Equivalent to REST POST/PUT/PATCH/DELETE — changes data state.</div></div>
+    <div class="box box-p"><div class="box-title">Error Handling</div><div class="box-body">Returns <strong>200 OK even on failure</strong>, with an <code>errors</code> field in the response body.</div></div>
+  </div>
+</section>
+
+<!-- ═══════════════ 08 PROTOCOLS ═══════════════ -->
+<section class="chapter" id="protocols">
+  <div class="ch-head">
+    <span class="ch-num">08</span>
+    <h2 class="ch-title">Network and Transport Layer Protocols</h2>
+    <span class="badge badge-b">Networking</span>
+  </div>
+
+  <h3>Application Layer</h3>
+  <div class="g3">
+    <div class="box box-b">
+      <div class="box-title">🔒 HTTPS</div>
+      <div class="box-body">Uses <strong>TLS/SSL encryption</strong> to protect data in transit. The modern security standard — non-negotiable for all production systems.</div>
+    </div>
+    <div class="box box-g">
+      <div class="box-title">🔄 WebSockets</div>
+      <div class="box-body">Enables <strong>bidirectional, real-time</strong> communication (e.g., chat apps) without the overhead of repetitive request-response cycles.</div>
+    </div>
+    <div class="box box-p">
+      <div class="box-title">📨 AMQP</div>
+      <div class="box-body">An <strong>asynchronous protocol</strong> for message queuing (e.g., RabbitMQ) — producers and consumers communicate at different speeds.</div>
+    </div>
+  </div>
+
+  <h3>TCP vs UDP — Transport Layer</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Feature</th><th>TCP</th><th>UDP</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Reliability</strong></td><td>Guaranteed delivery — resends lost packets</td><td>No guarantee — lost packets are ignored</td></tr>
+        <tr><td><strong>Ordering</strong></td><td>Guaranteed ordering of packets</td><td>Packets can arrive in any order</td></tr>
+        <tr><td><strong>Speed</strong></td><td>Slower (high overhead)</td><td>Faster (minimal overhead)</td></tr>
+        <tr><td><strong>Use Case</strong></td><td>Banking · Email · Payments</td><td>Video calls · Gaming · Live streams</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>TCP Three-Way Handshake</h3>
+  <p class="prose">Establishes a <strong>stable connection</strong> before any actual data is transmitted. Every TCP connection begins with this sequence.</p>
+  <div class="flow">
+    <div class="fb b"><div class="fb-l">Client</div><div class="fb-n">SYN →</div></div><div class="fa">→</div>
+    <div class="fb p"><div class="fb-l">Server</div><div class="fb-n">← SYN-ACK</div></div><div class="fa">→</div>
+    <div class="fb g"><div class="fb-l">Client</div><div class="fb-n">ACK →</div></div><div class="fa">→</div>
+    <div class="fb a"><div class="fb-l">Connection</div><div class="fb-n">Established</div></div>
+  </div>
+  <div class="steps" style="margin-top:16px;">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">SYN</div><div class="step-desc">Client sends a <strong>synchronisation request</strong> to the server.</div></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">SYN-ACK</div><div class="step-desc">Server <strong>acknowledges</strong> the request and sends its own synchronisation signal back.</div></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">ACK</div><div class="step-desc">Client acknowledges the server — the <strong>connection is finalised</strong> and data transfer begins.</div></div></div>
+  </div>
+</section>
+
+<!-- ═══════════════ 09 AUTH ═══════════════ -->
+<section class="chapter" id="auth">
+  <div class="ch-head">
+    <span class="ch-num">09</span>
+    <h2 class="ch-title">Security: Authentication &amp; Authorization</h2>
+    <span class="badge badge-r">Security</span>
+  </div>
+
+  <div class="g2" style="margin-bottom:28px;">
+    <div class="box box-b"><div class="box-title">🪪 Authentication — Identity</div><div class="box-body"><strong>Who are you?</strong> Verifies that you are who you claim to be before granting any access.</div></div>
+    <div class="box box-p"><div class="box-title">🔑 Authorization — Permissions</div><div class="box-body"><strong>What can you do?</strong> Determines which resources and actions you are permitted to access.</div></div>
+  </div>
+
+  <h3>Authentication Methods</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Method</th><th>Mechanism</th><th>Trade-off</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Basic / Digest</strong></td><td>Credentials in the HTTP header (Basic = base64; Digest = MD5)</td><td>Simple but weak — not suitable alone for production</td></tr>
+        <tr><td><strong>API Keys</strong></td><td>Unique strings passed in headers or query params</td><td>Require database lookups on every request</td></tr>
+        <tr><td><strong>Session-based</strong></td><td>Stateful — server stores session IDs in RAM or Redis</td><td>Harder to scale horizontally; session must be shared</td></tr>
+        <tr><td><strong>JWT (Token-based)</strong></td><td>Signed, stateless JSON object — verified via cryptographic signature</td><td>No database hit; but token revocation is complex</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Access &amp; Refresh Tokens</h3>
+  <div class="g2">
+    <div class="box box-b">
+      <div class="box-title">⚡ Access Token</div>
+      <div class="box-body"><strong>Short-lived</strong> token used for API access. Expires quickly (minutes to hours) to limit exposure if compromised.</div>
+    </div>
+    <div class="box box-g">
+      <div class="box-title">🔄 Refresh Token</div>
+      <div class="box-body"><strong>Long-lived</strong> token used to renew access tokens. <strong>Security Rule:</strong> Always store in HTTP-only cookies to prevent XSS-based theft.</div>
+    </div>
+  </div>
+
+  <h3>Authorization Models</h3>
+  <div class="g3">
+    <div class="card">
+      <div class="card-head"><div class="card-icon">👥</div><div class="card-label" style="color:var(--sd)">RBAC</div></div>
+      <div class="card-title">Role-Based Access Control</div>
+      <div class="card-body">Permissions assigned to <strong>roles</strong>, not individuals.<br/><strong>e.g.,</strong> Admin, Editor, Viewer</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-icon">🏷️</div><div class="card-label" style="color:var(--sd2)">ABAC</div></div>
+      <div class="card-title">Attribute-Based Access Control</div>
+      <div class="card-body">Access based on <strong>attributes</strong> of user, resource, and environment.<br/><strong>e.g.,</strong> HR department users only during work hours</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-icon">📋</div><div class="card-label" style="color:var(--emerald)">ACL</div></div>
+      <div class="card-title">Access Control Lists</div>
+      <div class="card-body">Specific permissions attached to a <strong>resource</strong> directly.<br/><strong>e.g.,</strong> A shared Google Doc with per-user permissions</div>
+    </div>
+  </div>
+
+  <h3>OAuth 2.0 &amp; OpenID Connect</h3>
+  <div class="g2">
+    <div class="box box-a">
+      <div class="box-title">🔐 OAuth 2.0</div>
+      <div class="box-body">An <strong>authorization framework</strong> for delegating access to third-party applications.<br/><br/>
+      <strong style="color:var(--red);">⚠ Common Pitfall:</strong> OAuth 2.0 is NOT an authentication protocol — it only delegates access, it does not verify identity.</div>
+    </div>
+    <div class="box box-g">
+      <div class="box-title">🪪 OpenID Connect (OIDC)</div>
+      <div class="box-body">The <strong>authentication layer</strong> built on top of OAuth 2.0. Provides identity tokens (ID tokens) that confirm who the user is — the correct tool for "Sign in with Google."</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 10 SYSTEM PROTECTION ═══════════════ -->
+<section class="chapter" id="protection">
+  <div class="ch-head">
+    <span class="ch-num">10</span>
+    <h2 class="ch-title">System Protection Techniques</h2>
+    <span class="badge badge-r">Defence</span>
+  </div>
+
+  <p class="prose">Production systems are constantly under attack. These seven protection layers form the foundation of a hardened, production-ready architecture.</p>
+
+  <div class="protect">
+
+    <div class="protect-item">
+      <div class="protect-problem">
+        <div class="protect-title">🚦 Rate Limiting</div>
+        <div class="protect-label prob">Problem</div>
+        <div class="protect-text">Attackers overwhelming the API with thousands of requests per minute — <strong>DDoS</strong> or brute-force login attempts.</div>
+      </div>
+      <div>
+        <div class="protect-label sol">Solution</div>
+        <div class="protect-text">Implement <strong>per-IP or per-user limits</strong> to block traffic automatically once a threshold is reached.</div>
+      </div>
+    </div>
+
+    <div class="protect-item">
+      <div class="protect-problem">
+        <div class="protect-title">🌐 CORS</div>
+        <div class="protect-label prob">Problem</div>
+        <div class="protect-text">Malicious websites tricking a user's browser into making <strong>unauthorised requests</strong> to your API.</div>
+      </div>
+      <div>
+        <div class="protect-label sol">Solution</div>
+        <div class="protect-text">Define an <strong>allow-list</strong> of specific domains permitted to interact with your API via the CORS policy headers.</div>
+      </div>
+    </div>
+
+    <div class="protect-item">
+      <div class="protect-problem">
+        <div class="protect-title">💉 Injection Prevention</div>
+        <div class="protect-label prob">Problem</div>
+        <div class="protect-text">Attackers inserting <strong>malicious code</strong> into input fields to read or delete database data (SQL/NoSQL Injection).</div>
+      </div>
+      <div>
+        <div class="protect-label sol">Solution</div>
+        <div class="protect-text">Use <strong>parameterised queries</strong> or ORM safeguards — treat all input as data, never as executable code.</div>
+      </div>
+    </div>
+
+    <div class="protect-item">
+      <div class="protect-problem">
+        <div class="protect-title">🧱 Firewalls (WAF)</div>
+        <div class="protect-label prob">Problem</div>
+        <div class="protect-text"><strong>Malicious traffic patterns</strong> — suspicious SQL keywords, strange HTTP methods — reaching your server directly.</div>
+      </div>
+      <div>
+        <div class="protect-label sol">Solution</div>
+        <div class="protect-text">Use a <strong>Web Application Firewall</strong> to filter known attack patterns before they hit your infrastructure.</div>
+      </div>
+    </div>
+
+    <div class="protect-item">
+      <div class="protect-problem">
+        <div class="protect-title">🔒 VPNs</div>
+        <div class="protect-label prob">Problem</div>
+        <div class="protect-text">Exposing <strong>sensitive internal tools</strong> or administrative APIs to the public internet unnecessarily.</div>
+      </div>
+      <div>
+        <div class="protect-label sol">Solution</div>
+        <div class="protect-text">Limit access to a <strong>private network</strong>, requiring users to connect via a secure encrypted tunnel first.</div>
+      </div>
+    </div>
+
+    <div class="protect-item">
+      <div class="protect-problem">
+        <div class="protect-title">🛡️ CSRF Protection</div>
+        <div class="protect-label prob">Problem</div>
+        <div class="protect-text">A logged-in user being tricked into performing <strong>unwanted actions</strong> on a different site using their active session cookies.</div>
+      </div>
+      <div>
+        <div class="protect-label sol">Solution</div>
+        <div class="protect-text">Use unique <strong>CSRF tokens</strong> that must be submitted and validated with every state-changing request.</div>
+      </div>
+    </div>
+
+    <div class="protect-item">
+      <div class="protect-problem">
+        <div class="protect-title">🪲 XSS Mitigation</div>
+        <div class="protect-label prob">Problem</div>
+        <div class="protect-text">Attackers <strong>injecting malicious scripts</strong> into pages viewed by other users (e.g., in a comment section).</div>
+      </div>
+      <div>
+        <div class="protect-label sol">Solution</div>
+        <div class="protect-text"><strong>Sanitise and validate</strong> all user inputs — prevent execution of injected JavaScript by escaping output correctly.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="callout callout-tip" style="margin-top:24px;">
+    <div class="callout-icon">🏗️</div>
+    <p><strong>Defence in Depth:</strong> No single protection layer is sufficient. Senior engineers layer multiple mechanisms — rate limiting + WAF + CSRF tokens + input validation — so that bypassing one layer does not compromise the entire system.</p>
+  </div>
+</section>
+
+</div><!-- end #main -->
+
+<script src="../shared/shared.js"></script>
+<script src="system-design.js"></script>
+</body>
+</html>
