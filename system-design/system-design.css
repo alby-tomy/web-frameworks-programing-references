@@ -89,14 +89,16 @@ h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; color: #
 h3::before { content: ''; display: inline-block; width: 3px; height: 14px; background: var(--sd); border-radius: 3px; flex-shrink: 0; }
 
 /* ── INFO BOXES ── */
-.box { padding: 16px 20px; border-radius: 9px; margin: 12px 0; border-left: 3px solid; }
+.box,
+.box-b, .box-p, .box-g, .box-a, .box-r { padding: 16px 20px; border-radius: 9px; margin: 12px 0; border-left: 3px solid; }
 .box-b { background: rgba(56,189,248,.06);  border-color: var(--sd); }
 .box-p { background: rgba(129,140,248,.07); border-color: var(--sd2); }
 .box-g { background: rgba(52,211,153,.06);  border-color: var(--emerald); }
 .box-a { background: rgba(251,191,36,.07);  border-color: var(--amber); }
 .box-r { background: rgba(241,113,113,.06); border-color: var(--red); }
-.box-title { font-weight: 700; font-size: .88rem; margin-bottom: 6px; color: var(--text); display: flex; align-items: center; gap: 8px; }
-.box-body  { font-size: .85rem; color: var(--muted); line-height: 1.7; }
+.box-title  { font-weight: 700; font-size: .88rem; margin-bottom: 6px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.box-label  { font-family: var(--mono); font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.box-body   { font-size: .85rem; color: var(--muted); line-height: 1.7; }
 .box-body strong { color: var(--text); }
 
 /* ── FLOW DIAGRAM ── */
@@ -146,7 +148,7 @@ ul.list li strong, ol.list li strong { color: var(--text); }
 /* ── STEPS ── */
 .steps { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
 .step { display: flex; gap: 14px; align-items: flex-start; }
-.step-num { width: 28px; height: 28px; border-radius: 50%; background: rgba(56,189,248,.15); border: 1px solid rgba(56,189,248,.3); color: var(--sd); font-family: var(--mono); font-size: .72rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+.step-num, .step-n { width: 28px; height: 28px; border-radius: 50%; background: rgba(56,189,248,.15); border: 1px solid rgba(56,189,248,.3); color: var(--sd); font-family: var(--mono); font-size: .72rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
 .step-body { flex: 1; }
 .step-title { font-weight: 600; color: #fff; margin-bottom: 3px; font-size: .88rem; }
 .step-desc { color: var(--muted); font-size: .83rem; line-height: 1.65; }
