@@ -31,8 +31,9 @@
       <a href="#settings"   class="sb-link"><span class="sb-num">06</span>settings.py Deep Dive</a>
       <a href="#urls"       class="sb-link"><span class="sb-num">07</span>URL Routing</a>
       <a href="#views"      class="sb-link"><span class="sb-num">08</span>Views — FBV &amp; CBV</a>
-      <a href="#models"     class="sb-link"><span class="sb-num">09</span>Models &amp; ORM</a>
-      <a href="#templates"  class="sb-link"><span class="sb-num">10</span>Templates</a>
+      <a href="#models"        class="sb-link"><span class="sb-num">09</span>Models &amp; ORM</a>
+      <a href="#relationships" class="sb-link"><span class="sb-num">09+</span>ORM Relationships</a>
+      <a href="#templates"     class="sb-link"><span class="sb-num">10</span>Templates</a>
       <a href="#forms"      class="sb-link"><span class="sb-num">11</span>Forms &amp; ModelForms</a>
       <a href="#admin"      class="sb-link"><span class="sb-num">12</span>Admin Panel</a>
     </div>
@@ -74,6 +75,7 @@
 
     <div class="sb-group">
       <div class="sb-group-label proj">★ School Management Project</div>
+      <a href="#proj-entities" class="sb-link proj-link"><span class="sb-num">P0</span>Entities &amp; User Roles</a>
       <a href="#proj-intro"   class="sb-link proj-link"><span class="sb-num">P1</span>Project Overview</a>
       <a href="#proj-setup"   class="sb-link proj-link"><span class="sb-num">P2</span>Setup &amp; Structure</a>
       <a href="#proj-models"  class="sb-link proj-link"><span class="sb-num">P3</span>All Models</a>
@@ -511,6 +513,299 @@ Student.objects.aggregate(avg_gpa=Avg(<span class="st">'gpa'</span>))
 Student.objects.update(is_active=<span class="kw">False</span>)                  <span class="cm"># bulk update</span>
 Student.objects.bulk_create([Student(...), Student(...)])  <span class="cm"># batch insert</span>
 </pre></div>
+</section>
+
+<!-- 09+ ORM RELATIONSHIPS -->
+<section class="chapter" id="relationships">
+  <div class="ch-head"><span class="ch-num">09+</span><h2 class="ch-title">ORM Relationships — One-to-One · One-to-Many · Many-to-One · Many-to-Many</h2><span class="badge badge-g">Core</span></div>
+  <p class="prose">Django provides three relationship field types that map directly to SQL foreign-key patterns. Each one is explained below with model definitions, the DB tables Django creates, and ORM queries from <em>both</em> sides of the relationship — the side that holds the field and the reverse accessor side.</p>
+
+  <!-- ── ONE-TO-ONE ── -->
+  <h3 class="sub-heading">① One-to-One &nbsp;<code>OneToOneField</code></h3>
+  <p class="prose"><strong>Each row in Table A maps to exactly one row in Table B — and vice versa.</strong> Django adds a <code>UNIQUE</code> constraint on the FK column so no two A rows can point to the same B row. Classic use-case: extending an existing model without subclassing (e.g. a <code>Profile</code> record per <code>User</code>, or a <code>Guardian</code> per <code>Student</code>).</p>
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">models.py — OneToOneField</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="kw2">from</span> django.db <span class="kw2">import</span> models
+
+<span class="kw">class</span> <span class="cl">Guardian</span>(models.Model):
+    full_name = models.CharField(max_length=<span class="nu">150</span>)
+    phone     = models.CharField(max_length=<span class="nu">15</span>)
+    relation  = models.CharField(max_length=<span class="nu">30</span>)   <span class="cm"># 'Father', 'Mother', etc.</span>
+
+    <span class="kw">def</span> <span class="fn">__str__</span>(self): <span class="kw">return</span> self.full_name
+
+
+<span class="kw">class</span> <span class="cl">Student</span>(models.Model):
+    full_name = models.CharField(max_length=<span class="nu">150</span>)
+    roll_no   = models.SlugField(unique=<span class="kw">True</span>)
+
+    <span class="cm"># OneToOneField — each student has ONE guardian, each guardian belongs to ONE student</span>
+    guardian  = models.OneToOneField(
+        Guardian,
+        on_delete=models.SET_NULL,   <span class="cm"># if guardian deleted, set student.guardian = NULL</span>
+        null=<span class="kw">True</span>,
+        blank=<span class="kw">True</span>,
+        related_name=<span class="st">'ward'</span>,        <span class="cm"># reverse accessor: guardian_obj.ward → Student</span>
+    )
+
+    <span class="kw">def</span> <span class="fn">__str__</span>(self): <span class="kw">return</span> self.full_name
+</pre></div>
+
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>DB Table</th><th>Column added</th><th>Constraint</th></tr></thead>
+    <tbody>
+      <tr><td><code>students_student</code></td><td><code>guardian_id</code> (FK → <code>students_guardian.id</code>)</td><td><code>UNIQUE</code> — enforces the "one" on both sides</td></tr>
+      <tr><td><code>students_guardian</code></td><td>—</td><td>No change; reverse access is via Python only</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">ORM queries — forward &amp; reverse</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="cm"># ── Forward: student → guardian ────────────────────────────────────</span>
+s = Student.objects.select_related(<span class="st">'guardian'</span>).get(roll_no=<span class="st">'2024001'</span>)
+s.guardian.full_name       <span class="cm"># 'John Doe'  — one JOIN, no extra query</span>
+s.guardian.phone           <span class="cm"># '9876543210'</span>
+
+<span class="cm"># Set / change guardian</span>
+g = Guardian.objects.create(full_name=<span class="st">'Jane Doe'</span>, phone=<span class="st">'9876543211'</span>, relation=<span class="st">'Mother'</span>)
+s.guardian = g
+s.save()
+
+<span class="cm"># ── Reverse: guardian → student ────────────────────────────────────</span>
+g = Guardian.objects.get(pk=<span class="nu">1</span>)
+g.ward            <span class="cm"># Student object  ← related_name='ward'</span>
+g.ward.full_name  <span class="cm"># 'Alice'</span>
+
+<span class="cm"># Check if guardian has a ward</span>
+<span class="kw">try</span>:
+    ward = g.ward
+<span class="kw">except</span> Student.DoesNotExist:
+    ward = <span class="kw">None</span>
+
+<span class="cm"># OR use hasattr</span>
+<span class="kw">if</span> hasattr(g, <span class="st">'ward'</span>): <span class="kw">print</span>(g.ward)
+</pre></div>
+
+  <!-- ── ONE-TO-MANY (FOREIGNKEY) ── -->
+  <h3 class="sub-heading">② One-to-Many &nbsp;<code>ForeignKey</code> — forward (many → one)</h3>
+  <p class="prose"><strong>Many rows in Table A reference one row in Table B.</strong> This is Django's <code>ForeignKey</code>. The FK column lives on the "many" side. Example: many <code>Student</code> rows share one <code>Classroom</code>. From the student's perspective this is a <em>many-to-one</em> lookup; from the classroom's perspective it is <em>one-to-many</em>.</p>
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">models.py — ForeignKey</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="kw">class</span> <span class="cl">Classroom</span>(models.Model):
+    name     = models.CharField(max_length=<span class="nu">20</span>)   <span class="cm"># e.g. '10A'</span>
+    capacity = models.PositiveSmallIntegerField(default=<span class="nu">40</span>)
+
+    <span class="kw">def</span> <span class="fn">__str__</span>(self): <span class="kw">return</span> self.name
+
+
+<span class="kw">class</span> <span class="cl">Student</span>(models.Model):
+    full_name = models.CharField(max_length=<span class="nu">150</span>)
+
+    <span class="cm"># ForeignKey — many students belong to ONE classroom</span>
+    classroom = models.ForeignKey(
+        Classroom,
+        on_delete=models.SET_NULL,   <span class="cm"># options: CASCADE, PROTECT, SET_NULL, DO_NOTHING</span>
+        null=<span class="kw">True</span>,
+        blank=<span class="kw">True</span>,
+        related_name=<span class="st">'students'</span>,    <span class="cm"># reverse accessor: classroom.students.all()</span>
+    )
+</pre></div>
+
+  <div class="tbl-wrap"><table>
+    <thead><tr><th><code>on_delete</code> option</th><th>What happens when the Classroom is deleted</th></tr></thead>
+    <tbody>
+      <tr><td><code>CASCADE</code></td><td>Delete all related students too</td></tr>
+      <tr><td><code>PROTECT</code></td><td>Raise <code>ProtectedError</code> — prevents deletion while students exist</td></tr>
+      <tr><td><code>SET_NULL</code></td><td>Set <code>student.classroom = NULL</code> (requires <code>null=True</code>)</td></tr>
+      <tr><td><code>SET_DEFAULT</code></td><td>Set the FK to the field's <code>default</code> value</td></tr>
+      <tr><td><code>DO_NOTHING</code></td><td>Leave DB as-is — you handle integrity manually</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">ORM queries — forward (many → one) and reverse (one → many)</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="cm"># ── Forward: student → classroom (many-to-one) ─────────────────────</span>
+s = Student.objects.select_related(<span class="st">'classroom'</span>).get(pk=<span class="nu">1</span>)
+s.classroom           <span class="cm"># Classroom object</span>
+s.classroom.name      <span class="cm"># '10A'</span>
+s.classroom_id        <span class="cm"># raw FK integer — no extra DB hit</span>
+
+<span class="cm"># Filter students that belong to classroom '10A'</span>
+Student.objects.filter(classroom__name=<span class="st">'10A'</span>)
+
+<span class="cm"># Assign a student to a different classroom</span>
+room = Classroom.objects.get(name=<span class="st">'11B'</span>)
+s.classroom = room
+s.save()
+
+<span class="cm"># ── Reverse: classroom → students (one-to-many) ────────────────────</span>
+room = Classroom.objects.prefetch_related(<span class="st">'students'</span>).get(name=<span class="st">'10A'</span>)
+room.students.all()            <span class="cm"># QuerySet of all students in 10A</span>
+room.students.count()          <span class="cm"># 35</span>
+room.students.filter(gpa__gte=<span class="nu">8</span>)
+
+<span class="cm"># Annotate classrooms with student count</span>
+<span class="kw2">from</span> django.db.models <span class="kw2">import</span> Count
+Classroom.objects.annotate(student_count=Count(<span class="st">'students'</span>))
+
+<span class="cm"># Add a new student directly via reverse manager</span>
+room.students.create(full_name=<span class="st">'New Student'</span>)
+</pre></div>
+
+  <!-- ── MANY-TO-ONE CLARIFICATION ── -->
+  <h3 class="sub-heading">③ Many-to-One — the same <code>ForeignKey</code>, the other perspective</h3>
+  <p class="prose"><strong>Many-to-one is not a separate field type</strong> — it is how a <code>ForeignKey</code> looks from the "many" side. When a student accesses <code>student.classroom</code> that is a many-to-one traversal: many students share one classroom. The table below shows the same relationship from both perspectives to eliminate confusion.</p>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Direction</th><th>Term</th><th>Example</th><th>ORM accessor</th></tr></thead>
+    <tbody>
+      <tr><td>Child → Parent</td><td><strong>Many-to-One</strong></td><td>student → classroom</td><td><code>student.classroom</code> (returns one object)</td></tr>
+      <tr><td>Parent → Children</td><td><strong>One-to-Many</strong></td><td>classroom → students</td><td><code>classroom.students.all()</code> (returns QuerySet)</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">Real-world many-to-one patterns</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="cm"># Pattern 1 — get every student's classroom name in one query (no N+1)</span>
+students = Student.objects.select_related(<span class="st">'classroom'</span>).all()
+<span class="kw">for</span> s <span class="kw">in</span> students:
+    <span class="kw">print</span>(s.full_name, <span class="st">'→'</span>, s.classroom.name)   <span class="cm"># uses JOIN, not per-row query</span>
+
+<span class="cm"># Pattern 2 — span across the FK with double-underscore lookups</span>
+Student.objects.filter(classroom__capacity__gte=<span class="nu">40</span>)
+Student.objects.filter(classroom__name__startswith=<span class="st">'10'</span>)
+Student.objects.values(<span class="st">'classroom__name'</span>, <span class="st">'full_name'</span>)
+
+<span class="cm"># Pattern 3 — group students by classroom</span>
+<span class="kw2">from</span> django.db.models <span class="kw2">import</span> Count
+Classroom.objects.annotate(total=Count(<span class="st">'students'</span>)).order_by(<span class="st">'-total'</span>)
+
+<span class="cm"># Pattern 4 — move all students from one class to another (bulk update)</span>
+old_room = Classroom.objects.get(name=<span class="st">'10A'</span>)
+new_room = Classroom.objects.get(name=<span class="st">'10B'</span>)
+Student.objects.filter(classroom=old_room).update(classroom=new_room)
+</pre></div>
+
+  <!-- ── MANY-TO-MANY ── -->
+  <h3 class="sub-heading">④ Many-to-Many &nbsp;<code>ManyToManyField</code></h3>
+  <p class="prose"><strong>Many rows in Table A relate to many rows in Table B.</strong> Django automatically creates a <em>junction / through table</em> with two FK columns to manage the relationship. Classic use-case: a student enrolls in many subjects, and each subject is taken by many students. You can also define a custom <code>through</code> model to store extra data on the relationship (e.g. enrollment date, grade).</p>
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">models.py — ManyToManyField (auto junction table)</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="kw">class</span> <span class="cl">Subject</span>(models.Model):
+    name = models.CharField(max_length=<span class="nu">100</span>)
+    code = models.CharField(max_length=<span class="nu">10</span>, unique=<span class="kw">True</span>)
+
+    <span class="kw">def</span> <span class="fn">__str__</span>(self): <span class="kw">return</span> self.name
+
+
+<span class="kw">class</span> <span class="cl">Student</span>(models.Model):
+    full_name = models.CharField(max_length=<span class="nu">150</span>)
+
+    <span class="cm"># ManyToManyField — a student takes many subjects, a subject has many students</span>
+    subjects  = models.ManyToManyField(
+        Subject,
+        blank=<span class="kw">True</span>,
+        related_name=<span class="st">'enrolled_students'</span>,  <span class="cm"># subject.enrolled_students.all()</span>
+    )
+</pre></div>
+
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>DB Table</th><th>Columns</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td><code>students_student</code></td><td>no new column</td><td>M2M fields don't add a column to the model's table</td></tr>
+      <tr><td><code>students_subject</code></td><td>no new column</td><td>Same</td></tr>
+      <tr><td><code>students_student_subjects</code> <em>(auto)</em></td><td><code>student_id</code>, <code>subject_id</code></td><td>Django creates this junction table automatically</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">ORM queries — M2M add/remove/set + reverse</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="cm"># ── Student → Subjects (forward) ───────────────────────────────────</span>
+s = Student.objects.prefetch_related(<span class="st">'subjects'</span>).get(pk=<span class="nu">1</span>)
+
+s.subjects.all()                          <span class="cm"># all subjects this student takes</span>
+s.subjects.count()                        <span class="cm"># 5</span>
+s.subjects.filter(code__startswith=<span class="st">'SCI'</span>)
+
+<span class="cm"># Add a subject (insert row in junction table)</span>
+maths = Subject.objects.get(code=<span class="st">'MATH01'</span>)
+s.subjects.add(maths)
+
+<span class="cm"># Add multiple at once</span>
+s.subjects.add(*Subject.objects.filter(code__in=[<span class="st">'SCI01'</span>, <span class="st">'ENG01'</span>]))
+
+<span class="cm"># Remove a subject</span>
+s.subjects.remove(maths)
+
+<span class="cm"># Replace ALL subjects at once</span>
+s.subjects.set(Subject.objects.filter(code__startswith=<span class="st">'CORE'</span>))
+
+<span class="cm"># Remove all subjects</span>
+s.subjects.clear()
+
+<span class="cm"># ── Subject → Students (reverse) ───────────────────────────────────</span>
+subj = Subject.objects.get(code=<span class="st">'MATH01'</span>)
+subj.enrolled_students.all()             <span class="cm"># all students taking maths</span>
+subj.enrolled_students.filter(gpa__gte=<span class="nu">9</span>)
+
+<span class="cm"># ── Cross-filter (span the M2M) ────────────────────────────────────</span>
+<span class="cm"># students who take both MATH01 AND SCI01</span>
+Student.objects.filter(subjects__code=<span class="st">'MATH01'</span>).filter(subjects__code=<span class="st">'SCI01'</span>)
+
+<span class="cm"># subjects taken by student with roll 2024001</span>
+Subject.objects.filter(enrolled_students__roll_no=<span class="st">'2024001'</span>)
+</pre></div>
+
+  <!-- ── CUSTOM THROUGH TABLE ── -->
+  <h3 class="sub-heading">④b  Many-to-Many with a custom <code>through</code> model</h3>
+  <p class="prose">When you need to store <em>extra data on the relationship itself</em> (e.g. the date a student enrolled in a subject, or the grade they received), replace the auto junction table with an explicit <code>through</code> model.</p>
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">models.py — explicit through model (Enrollment)</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="kw">class</span> <span class="cl">Enrollment</span>(models.Model):
+    <span class="cm"># The junction table — with extra fields</span>
+    student      = models.ForeignKey(Student, on_delete=models.CASCADE, related_name=<span class="st">'enrollments'</span>)
+    subject      = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name=<span class="st">'enrollments'</span>)
+    enrolled_on  = models.DateField(auto_now_add=<span class="kw">True</span>)
+    grade        = models.CharField(max_length=<span class="nu">2</span>, blank=<span class="kw">True</span>)  <span class="cm"># 'A+', 'B', …</span>
+    is_active    = models.BooleanField(default=<span class="kw">True</span>)
+
+    <span class="kw">class</span> <span class="cl">Meta</span>:
+        unique_together = [(<span class="st">'student'</span>, <span class="st">'subject'</span>)]
+
+    <span class="kw">def</span> <span class="fn">__str__</span>(self):
+        <span class="kw">return</span> f<span class="st">"{self.student} — {self.subject}"</span>
+
+
+<span class="kw">class</span> <span class="cl">Student</span>(models.Model):
+    full_name = models.CharField(max_length=<span class="nu">150</span>)
+    subjects  = models.ManyToManyField(
+        Subject,
+        through=<span class="st">'Enrollment'</span>,        <span class="cm"># use our custom junction model</span>
+        related_name=<span class="st">'enrolled_students'</span>,
+    )
+</pre></div>
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">ORM queries — through model</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="cm"># Create enrollment (must go through the through model directly)</span>
+Enrollment.objects.create(student=s, subject=maths, grade=<span class="st">'A'</span>)
+
+<span class="cm"># Fetch a student's enrollments with the extra fields</span>
+s.enrollments.select_related(<span class="st">'subject'</span>).filter(is_active=<span class="kw">True</span>)
+
+<span class="cm"># Fetch all active students in MATH01 with their grade</span>
+Enrollment.objects.select_related(<span class="st">'student'</span>, <span class="st">'subject'</span>)\
+    .filter(subject__code=<span class="st">'MATH01'</span>, is_active=<span class="kw">True</span>)\
+    .order_by(<span class="st">'student__full_name'</span>)
+
+<span class="cm"># s.subjects.all() still works — returns Subject objects (no grade)</span>
+<span class="cm"># Use s.enrollments.all() when you need the grade</span>
+
+<span class="cm"># NOTE: .add() / .remove() / .set() / .clear() are DISABLED on M2M with a through model</span>
+<span class="cm"># You must create/delete Enrollment rows directly</span>
+</pre></div>
+
+  <!-- ── QUICK COMPARISON ── -->
+  <h3 class="sub-heading">Quick Comparison</h3>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Relationship</th><th>Django field</th><th>FK column lives in…</th><th>Reverse accessor returns</th></tr></thead>
+    <tbody>
+      <tr><td><strong>One-to-One</strong></td><td><code>OneToOneField</code></td><td>"child" model table (UNIQUE FK)</td><td>Single object (raises <code>DoesNotExist</code> if none)</td></tr>
+      <tr><td><strong>Many-to-One</strong> (child→parent)</td><td><code>ForeignKey</code></td><td>"many" / child table</td><td><code>.all()</code> — QuerySet of children</td></tr>
+      <tr><td><strong>One-to-Many</strong> (parent→children)</td><td>same <code>ForeignKey</code>, reverse</td><td>—</td><td><code>related_name.all()</code> — QuerySet</td></tr>
+      <tr><td><strong>Many-to-Many</strong></td><td><code>ManyToManyField</code></td><td>auto junction table</td><td><code>related_name.all()</code> — QuerySet</td></tr>
+      <tr><td><strong>M2M with extras</strong></td><td><code>ManyToManyField(through=…)</code></td><td>explicit junction model</td><td>same, but use <code>through</code> model for extra data</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
 <section class="chapter" id="templates">
@@ -1636,6 +1931,434 @@ logger = logging.getLogger(<span class="st">'school.api'</span>)
   <div class="div-title">School Management System — End to End</div>
   <div class="div-desc">All 35 concepts applied in one real project — Students, Teachers, Classes, Attendance, Grades, Timetables, Notifications. From first model to production deployment.</div>
 </div>
+
+<!-- P0 ENTITIES & USER ROLES -->
+<section class="chapter" id="proj-entities">
+  <div class="ch-head"><span class="ch-num proj">P0</span><h2 class="ch-title">Entities &amp; User Roles — School Management System</h2><span class="badge badge-a">Project</span></div>
+  <p class="prose">Before writing a single line of Django code, you need a clear picture of <em>who</em> exists in the system and <em>what</em> they own. This section maps every real-world actor and object to a Django model, explains each field's purpose, and shows how all the pieces connect through relationships.</p>
+
+  <!-- ── OVERVIEW MAP ── -->
+  <h3 class="sub-heading">System Entity Map</h3>
+  <div class="flow" style="flex-wrap:wrap;gap:10px;">
+    <div class="fb a"><div class="fb-l">User</div><div class="fb-n">role field gates access</div></div><div class="fa">→</div>
+    <div class="fb g"><div class="fb-l">Teacher</div><div class="fb-n">OneToOne → User</div></div><div class="fa">+</div>
+    <div class="fb g"><div class="fb-l">Student</div><div class="fb-n">OneToOne → User</div></div><div class="fa">+</div>
+    <div class="fb g"><div class="fb-l">NonTeachingStaff</div><div class="fb-n">OneToOne → User</div></div><div class="fa">+</div>
+    <div class="fb b"><div class="fb-l">Parent</div><div class="fb-n">ForeignKey ← Student</div></div>
+  </div>
+  <div class="flow" style="flex-wrap:wrap;gap:10px;margin-top:10px;">
+    <div class="fb"><div class="fb-l">Classroom</div><div class="fb-n">class_teacher → Teacher</div></div><div class="fa">→</div>
+    <div class="fb b"><div class="fb-l">Subject</div><div class="fb-n">M2M ↔ Teacher, Classroom</div></div><div class="fa">→</div>
+    <div class="fb a"><div class="fb-l">Student</div><div class="fb-n">FK → Classroom</div></div><div class="fa">→</div>
+    <div class="fb p"><div class="fb-l">Attendance · Grades</div><div class="fb-n">FK → Student + Subject</div></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       PART A — USER ROLE SYSTEM
+       ══════════════════════════════════════════════════════════════ -->
+  <h3 class="sub-heading">Part A — User Role System</h3>
+  <p class="prose">A single <code>User</code> model (extending <code>AbstractBaseUser</code>) powers every person in the system. A <code>role</code> field on the user decides what they can see and do. Each role has a separate <em>profile model</em> that stores role-specific details — keeping the auth table clean and generic.</p>
+
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Role value</th><th>Person</th><th>Profile model</th><th>What they can do</th></tr></thead>
+    <tbody>
+      <tr><td><code>admin</code></td><td>Administrator</td><td><em>none (is_staff=True gives full admin access)</em></td><td>Full CRUD on everything — users, classes, staff, grades</td></tr>
+      <tr><td><code>teacher</code></td><td>Teacher / Class Teacher</td><td><code>Teacher</code></td><td>Mark attendance, enter grades for their subjects, view their timetable</td></tr>
+      <tr><td><code>student</code></td><td>Student</td><td><code>Student</code></td><td>View own attendance, grades, timetable, notifications</td></tr>
+      <tr><td><code>non_teaching</code></td><td>Non-teaching staff</td><td><code>NonTeachingStaff</code></td><td>Limited: view school info, manage their own department tasks</td></tr>
+      <tr><td><code>parent</code></td><td>Parent / Guardian</td><td><em>linked via <code>Student.parent</code></em></td><td>View their child's attendance, grades, and notifications — read-only</td></tr>
+      <tr><td><code>guest</code></td><td>Unauthenticated visitor</td><td><em>no account</em></td><td>Public pages only — school info, contact form</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">accounts/models.py — Custom User with all roles</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="kw2">from</span> django.contrib.auth.models <span class="kw2">import</span> AbstractBaseUser, BaseUserManager, PermissionsMixin
+<span class="kw2">from</span> django.db <span class="kw2">import</span> models
+
+<span class="kw">class</span> <span class="cl">SchoolUserManager</span>(BaseUserManager):
+    <span class="kw">def</span> <span class="fn">create_user</span>(self, email, password=<span class="kw">None</span>, **extra):
+        <span class="kw">if not</span> email: <span class="kw">raise</span> ValueError(<span class="st">'Email is required'</span>)
+        user = self.model(email=self.normalize_email(email), **extra)
+        user.set_password(password)
+        user.save(using=self._db)
+        <span class="kw">return</span> user
+
+    <span class="kw">def</span> <span class="fn">create_superuser</span>(self, email, password=<span class="kw">None</span>, **extra):
+        extra.setdefault(<span class="st">'is_staff'</span>, <span class="kw">True</span>)
+        extra.setdefault(<span class="st">'is_superuser'</span>, <span class="kw">True</span>)
+        extra.setdefault(<span class="st">'role'</span>, <span class="st">'admin'</span>)
+        <span class="kw">return</span> self.create_user(email, password, **extra)
+
+
+<span class="kw">class</span> <span class="cl">User</span>(AbstractBaseUser, PermissionsMixin):
+    <span class="cm"># ── Role choices — covers every actor in the system ────────────────</span>
+    ROLES = [
+        (<span class="st">'admin'</span>,       <span class="st">'Administrator'</span>),
+        (<span class="st">'teacher'</span>,     <span class="st">'Teacher'</span>),
+        (<span class="st">'student'</span>,     <span class="st">'Student'</span>),
+        (<span class="st">'non_teaching'</span>,<span class="st">'Non-Teaching Staff'</span>),
+        (<span class="st">'parent'</span>,      <span class="st">'Parent'</span>),
+        (<span class="st">'guest'</span>,       <span class="st">'Guest'</span>),
+    ]
+
+    email     = models.EmailField(unique=<span class="kw">True</span>)          <span class="cm"># login identifier</span>
+    full_name = models.CharField(max_length=<span class="nu">150</span>)
+    role      = models.CharField(max_length=<span class="nu">15</span>, choices=ROLES, default=<span class="st">'student'</span>)
+    phone     = models.CharField(max_length=<span class="nu">15</span>, blank=<span class="kw">True</span>)
+    avatar    = models.ImageField(upload_to=<span class="st">'avatars/'</span>, null=<span class="kw">True</span>, blank=<span class="kw">True</span>)
+    is_active = models.BooleanField(default=<span class="kw">True</span>)
+    is_staff  = models.BooleanField(default=<span class="kw">False</span>)     <span class="cm"># True → Django admin access</span>
+    date_joined = models.DateTimeField(auto_now_add=<span class="kw">True</span>)
+
+    USERNAME_FIELD  = <span class="st">'email'</span>
+    REQUIRED_FIELDS = [<span class="st">'full_name'</span>, <span class="st">'role'</span>]
+    objects = SchoolUserManager()
+
+    <span class="cm"># ── Convenience properties to check role without importing constants ──</span>
+    <span class="di">@property</span>
+    <span class="kw">def</span> <span class="fn">is_admin</span>(self):         <span class="kw">return</span> self.role == <span class="st">'admin'</span>
+    <span class="di">@property</span>
+    <span class="kw">def</span> <span class="fn">is_teacher</span>(self):       <span class="kw">return</span> self.role == <span class="st">'teacher'</span>
+    <span class="di">@property</span>
+    <span class="kw">def</span> <span class="fn">is_student</span>(self):       <span class="kw">return</span> self.role == <span class="st">'student'</span>
+    <span class="di">@property</span>
+    <span class="kw">def</span> <span class="fn">is_non_teaching</span>(self):  <span class="kw">return</span> self.role == <span class="st">'non_teaching'</span>
+    <span class="di">@property</span>
+    <span class="kw">def</span> <span class="fn">is_parent</span>(self):        <span class="kw">return</span> self.role == <span class="st">'parent'</span>
+
+    <span class="kw">def</span> <span class="fn">__str__</span>(self): <span class="kw">return</span> f<span class="st">"{self.full_name} [{self.role}]"</span>
+
+<span class="cm"># settings.py — MUST be set before first migrate</span>
+AUTH_USER_MODEL = <span class="st">'accounts.User'</span>
+</pre></div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       PART B — MODELS
+       ══════════════════════════════════════════════════════════════ -->
+  <h3 class="sub-heading">Part B — Every Model Explained</h3>
+
+  <!-- ── ADMINISTRATOR ── -->
+  <h4 class="sub-heading-sm">① Administrator</h4>
+  <p class="prose">Administrators are just <code>User</code> rows with <code>role='admin'</code> and <code>is_staff=True</code>. They get full access to the Django admin panel (<code>/admin/</code>) and all API endpoints. No separate profile model is needed — the <code>User</code> table is enough.</p>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Field</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>User.role = 'admin'</code></td><td>Grants elevated permissions in every permission class</td></tr>
+      <tr><td><code>User.is_staff = True</code></td><td>Unlocks the Django <code>/admin/</code> interface</td></tr>
+      <tr><td><code>User.is_superuser = True</code></td><td>Bypasses all permission checks (superadmin only)</td></tr>
+    </tbody>
+  </table></div>
+
+  <!-- ── TEACHER ── -->
+  <h4 class="sub-heading-sm">② Teacher</h4>
+  <p class="prose">A teacher has a login account (<code>User</code> with <code>role='teacher'</code>) linked one-to-one to a <code>Teacher</code> profile that stores professional details. A teacher can teach multiple subjects and be assigned to one or more classrooms via the timetable.</p>
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">teachers/models.py — Teacher</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="kw">class</span> <span class="cl">Teacher</span>(models.Model):
+    <span class="cm"># OneToOne → User means ONE teacher account per person</span>
+    user          = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name=<span class="st">'teacher_profile'</span>,
+        limit_choices_to={<span class="st">'role'</span>: <span class="st">'teacher'</span>},   <span class="cm"># admin form only shows teacher-role users</span>
+    )
+    employee_id   = models.CharField(max_length=<span class="nu">20</span>, unique=<span class="kw">True</span>)   <span class="cm"># 'TCH-2024-001'</span>
+    qualification = models.CharField(max_length=<span class="nu">200</span>)                 <span class="cm"># 'B.Ed, M.Sc Physics'</span>
+    joining_date  = models.DateField()
+    salary        = models.DecimalField(max_digits=<span class="nu">10</span>, decimal_places=<span class="nu">2</span>)
+    is_active     = models.BooleanField(default=<span class="kw">True</span>)
+
+    <span class="cm"># A teacher can teach MANY subjects (M2M)</span>
+    subjects      = models.ManyToManyField(<span class="st">'Subject'</span>, blank=<span class="kw">True</span>, related_name=<span class="st">'teachers'</span>)
+
+    <span class="kw">class</span> <span class="cl">Meta</span>:
+        ordering = [<span class="st">'employee_id'</span>]
+
+    <span class="kw">def</span> <span class="fn">__str__</span>(self): <span class="kw">return</span> f<span class="st">"{self.user.full_name} ({self.employee_id})"</span>
+
+<span class="cm"># Access patterns:</span>
+teacher = Teacher.objects.select_related(<span class="st">'user'</span>).get(employee_id=<span class="st">'TCH-2024-001'</span>)
+teacher.user.full_name         <span class="cm"># 'Mr. John Smith'</span>
+teacher.user.email             <span class="cm"># 'john@school.com'</span>
+teacher.subjects.all()         <span class="cm"># all subjects this teacher teaches</span>
+teacher.classrooms.all()       <span class="cm"># classrooms where this teacher is class_teacher (reverse FK)</span>
+
+<span class="cm"># Reverse: from a User object → Teacher profile</span>
+user = User.objects.get(email=<span class="st">'john@school.com'</span>)
+user.teacher_profile           <span class="cm"># Teacher object (or raises RelatedObjectDoesNotExist)</span>
+</pre></div>
+
+  <!-- ── CLASS TEACHER ── -->
+  <h4 class="sub-heading-sm">③ Class Teacher</h4>
+  <p class="prose"><strong>Class Teacher is not a separate model.</strong> It is a role a <code>Teacher</code> plays — being the primary in-charge of a specific <code>Classroom</code>. Django models this as a <code>ForeignKey</code> on <code>Classroom</code> pointing to <code>Teacher</code>. One teacher can be the class teacher of at most one class per academic year (enforced via <code>unique_together</code>).</p>
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">classes/models.py — Classroom with class_teacher FK</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="kw">class</span> <span class="cl">Classroom</span>(models.Model):
+    name          = models.CharField(max_length=<span class="nu">20</span>, unique=<span class="kw">True</span>)   <span class="cm"># '10-A'</span>
+    grade         = models.PositiveSmallIntegerField()                 <span class="cm"># 10</span>
+    section       = models.CharField(max_length=<span class="nu">5</span>)                   <span class="cm"># 'A'</span>
+    academic_year = models.CharField(max_length=<span class="nu">9</span>, default=<span class="st">'2024-2025'</span>)
+    max_capacity  = models.PositiveSmallIntegerField(default=<span class="nu">40</span>)
+
+    <span class="cm"># ★ Class Teacher — one teacher in-charge per classroom</span>
+    class_teacher = models.ForeignKey(
+        <span class="st">'teachers.Teacher'</span>,
+        on_delete=models.SET_NULL,
+        null=<span class="kw">True</span>, blank=<span class="kw">True</span>,
+        related_name=<span class="st">'class_in_charge'</span>,    <span class="cm"># teacher.class_in_charge.all() → Classrooms they manage</span>
+    )
+
+    <span class="cm"># Subjects taught in this classroom</span>
+    subjects      = models.ManyToManyField(<span class="st">'teachers.Subject'</span>, blank=<span class="kw">True</span>, related_name=<span class="st">'classrooms'</span>)
+
+    <span class="kw">class</span> <span class="cl">Meta</span>:
+        unique_together = [(<span class="st">'grade'</span>, <span class="st">'section'</span>, <span class="st">'academic_year'</span>)]
+        ordering        = [<span class="st">'grade'</span>, <span class="st">'section'</span>]
+
+    <span class="kw">def</span> <span class="fn">__str__</span>(self): <span class="kw">return</span> self.name
+
+
+<span class="cm"># Access patterns:</span>
+room = Classroom.objects.select_related(<span class="st">'class_teacher__user'</span>).get(name=<span class="st">'10-A'</span>)
+room.class_teacher.user.full_name    <span class="cm"># 'Mrs. Alice'</span>
+room.students.all()                  <span class="cm"># all students (reverse FK from Student)</span>
+room.subjects.all()                  <span class="cm"># subjects taught in this class</span>
+
+<span class="cm"># All classrooms a teacher is class teacher of:</span>
+teacher = Teacher.objects.get(employee_id=<span class="st">'TCH-001'</span>)
+teacher.class_in_charge.all()        <span class="cm"># QuerySet[Classroom]</span>
+
+<span class="cm"># Check if a teacher is a class teacher of any class:</span>
+teacher.class_in_charge.exists()     <span class="cm"># True / False</span>
+</pre></div>
+
+  <!-- ── STUDENT ── -->
+  <h4 class="sub-heading-sm">④ Student</h4>
+  <p class="prose">A student has a login account (<code>User</code> with <code>role='student'</code>) linked to a <code>Student</code> profile. The profile stores school-specific data: roll number, classroom assignment, GPA. The student belongs to one <code>Classroom</code> (ForeignKey) and can have one or more <code>Parent</code> records linked to them.</p>
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">students/models.py — Student</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="kw">class</span> <span class="cl">Student</span>(models.Model):
+    <span class="cm"># OneToOne → User (student login account)</span>
+    user      = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name=<span class="st">'student_profile'</span>,
+        limit_choices_to={<span class="st">'role'</span>: <span class="st">'student'</span>},
+    )
+    roll_no   = models.SlugField(unique=<span class="kw">True</span>)        <span class="cm"># '2024-10A-001'</span>
+    dob       = models.DateField()
+    gender    = models.CharField(max_length=<span class="nu">1</span>, choices=[(<span class="st">'M'</span>,<span class="st">'Male'</span>),(<span class="st">'F'</span>,<span class="st">'Female'</span>),(<span class="st">'O'</span>,<span class="st">'Other'</span>)])
+    photo     = models.ImageField(upload_to=<span class="st">'students/photos/%Y/%m/'</span>, null=<span class="kw">True</span>, blank=<span class="kw">True</span>)
+    address   = models.TextField(blank=<span class="kw">True</span>)
+    is_active = models.BooleanField(default=<span class="kw">True</span>)
+    gpa       = models.DecimalField(max_digits=<span class="nu">4</span>, decimal_places=<span class="nu">2</span>, default=<span class="nu">0.00</span>)
+    admitted_on = models.DateField(auto_now_add=<span class="kw">True</span>)
+
+    <span class="cm"># FK → Classroom — a student belongs to ONE class</span>
+    classroom = models.ForeignKey(
+        <span class="st">'classes.Classroom'</span>,
+        on_delete=models.SET_NULL,
+        null=<span class="kw">True</span>,
+        related_name=<span class="st">'students'</span>,
+    )
+
+    <span class="kw">class</span> <span class="cl">Meta</span>:
+        ordering = [<span class="st">'roll_no'</span>]
+        indexes  = [models.Index(fields=[<span class="st">'roll_no'</span>])]
+
+    <span class="kw">def</span> <span class="fn">__str__</span>(self): <span class="kw">return</span> f<span class="st">"{self.roll_no} — {self.user.full_name}"</span>
+
+<span class="cm"># Access patterns:</span>
+s = Student.objects.select_related(<span class="st">'user'</span>, <span class="st">'classroom'</span>).get(roll_no=<span class="st">'2024-10A-001'</span>)
+s.user.full_name          <span class="cm"># 'Bob Kumar'</span>
+s.classroom.name          <span class="cm"># '10-A'</span>
+s.classroom.class_teacher <span class="cm"># Teacher object</span>
+s.attendance.all()        <span class="cm"># all attendance records (reverse FK)</span>
+s.marks.all()             <span class="cm"># all exam marks (reverse FK)</span>
+s.parents.all()           <span class="cm"># all linked parents (reverse FK from Parent)</span>
+</pre></div>
+
+  <!-- ── SUBJECT ── -->
+  <h4 class="sub-heading-sm">⑤ Subject</h4>
+  <p class="prose">A <code>Subject</code> is the standalone academic topic (Maths, Physics, English). It connects to <code>Teacher</code> (who teaches it) via M2M, to <code>Classroom</code> (where it is taught) via M2M, and is referenced by <code>Timetable</code>, <code>Mark</code>, and <code>AttendanceRecord</code> rows via ForeignKey.</p>
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">teachers/models.py — Subject</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="kw">class</span> <span class="cl">Subject</span>(models.Model):
+    name       = models.CharField(max_length=<span class="nu">100</span>)              <span class="cm"># 'Mathematics'</span>
+    code       = models.CharField(max_length=<span class="nu">10</span>, unique=<span class="kw">True</span>) <span class="cm"># 'MATH10'</span>
+    full_marks = models.PositiveIntegerField(default=<span class="nu">100</span>)
+    pass_marks = models.PositiveIntegerField(default=<span class="nu">35</span>)
+    is_elective = models.BooleanField(default=<span class="kw">False</span>)           <span class="cm"># core vs optional</span>
+
+    <span class="kw">class</span> <span class="cl">Meta</span>:
+        ordering = [<span class="st">'code'</span>]
+
+    <span class="kw">def</span> <span class="fn">__str__</span>(self): <span class="kw">return</span> f<span class="st">"{self.name} ({self.code})"</span>
+
+<span class="cm"># Access patterns:</span>
+subj = Subject.objects.get(code=<span class="st">'MATH10'</span>)
+subj.teachers.all()           <span class="cm"># all teachers who teach this subject (reverse M2M)</span>
+subj.classrooms.all()         <span class="cm"># all classrooms where this subject is in the syllabus</span>
+subj.marks_set.filter(exam__exam_type=<span class="st">'final'</span>)   <span class="cm"># final exam marks for this subject</span>
+</pre></div>
+
+  <!-- ── NON-TEACHING STAFF ── -->
+  <h4 class="sub-heading-sm">⑥ Non-Teaching Staff</h4>
+  <p class="prose">Non-teaching staff (librarians, lab assistants, accountants, peons) have login accounts (<code>User</code> with <code>role='non_teaching'</code>) linked to a <code>NonTeachingStaff</code> profile. They are grouped by <code>department</code> and have no connection to classrooms or subjects.</p>
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">accounts/models.py — NonTeachingStaff</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="kw">class</span> <span class="cl">NonTeachingStaff</span>(models.Model):
+    DEPARTMENTS = [
+        (<span class="st">'admin'</span>,      <span class="st">'Administration'</span>),
+        (<span class="st">'library'</span>,    <span class="st">'Library'</span>),
+        (<span class="st">'lab'</span>,        <span class="st">'Laboratory'</span>),
+        (<span class="st">'accounts'</span>,   <span class="st">'Accounts'</span>),
+        (<span class="st">'sports'</span>,     <span class="st">'Sports'</span>),
+        (<span class="st">'security'</span>,   <span class="st">'Security'</span>),
+        (<span class="st">'housekeeping'</span>,<span class="st">'Housekeeping'</span>),
+    ]
+
+    user       = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name=<span class="st">'staff_profile'</span>,
+        limit_choices_to={<span class="st">'role'</span>: <span class="st">'non_teaching'</span>},
+    )
+    employee_id = models.CharField(max_length=<span class="nu">20</span>, unique=<span class="kw">True</span>)   <span class="cm"># 'STF-2024-001'</span>
+    department  = models.CharField(max_length=<span class="nu">20</span>, choices=DEPARTMENTS)
+    designation = models.CharField(max_length=<span class="nu">100</span>)                 <span class="cm"># 'Head Librarian'</span>
+    joining_date = models.DateField()
+    salary       = models.DecimalField(max_digits=<span class="nu">10</span>, decimal_places=<span class="nu">2</span>)
+    is_active    = models.BooleanField(default=<span class="kw">True</span>)
+
+    <span class="kw">class</span> <span class="cl">Meta</span>:
+        ordering   = [<span class="st">'department'</span>, <span class="st">'employee_id'</span>]
+        verbose_name = <span class="st">'Non-Teaching Staff'</span>
+
+    <span class="kw">def</span> <span class="fn">__str__</span>(self): <span class="kw">return</span> f<span class="st">"{self.user.full_name} — {self.designation}"</span>
+
+<span class="cm"># Access patterns:</span>
+staff = NonTeachingStaff.objects.select_related(<span class="st">'user'</span>).filter(department=<span class="st">'library'</span>)
+<span class="kw">for</span> s <span class="kw">in</span> staff: <span class="kw">print</span>(s.user.full_name, s.designation)
+
+<span class="cm"># All non-teaching staff from User side:</span>
+User.objects.filter(role=<span class="st">'non_teaching'</span>).select_related(<span class="st">'staff_profile'</span>)
+</pre></div>
+
+  <!-- ── PARENT ── -->
+  <h4 class="sub-heading-sm">⑦ Parent / Guardian</h4>
+  <p class="prose">A <code>Parent</code> is linked to one or more students via <code>ForeignKey</code>. A parent can have a login account (<code>User</code> with <code>role='parent'</code>) to log in and view their child's data — or they can be stored as contact-only without an account. The <code>user</code> field is optional (<code>null=True</code>).</p>
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">students/models.py — Parent</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="kw">class</span> <span class="cl">Parent</span>(models.Model):
+    RELATION = [(<span class="st">'father'</span>,<span class="st">'Father'</span>),(<span class="st">'mother'</span>,<span class="st">'Mother'</span>),(<span class="st">'guardian'</span>,<span class="st">'Guardian'</span>)]
+
+    <span class="cm"># Optional User account — parent may or may not have a login</span>
+    user      = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=<span class="kw">True</span>, blank=<span class="kw">True</span>,
+        related_name=<span class="st">'parent_profile'</span>,
+        limit_choices_to={<span class="st">'role'</span>: <span class="st">'parent'</span>},
+    )
+    full_name = models.CharField(max_length=<span class="nu">150</span>)
+    phone     = models.CharField(max_length=<span class="nu">15</span>)
+    email     = models.EmailField(blank=<span class="kw">True</span>)
+    occupation = models.CharField(max_length=<span class="nu">100</span>, blank=<span class="kw">True</span>)
+    relation  = models.CharField(max_length=<span class="nu">10</span>, choices=RELATION)
+
+    <span class="cm"># ONE parent → MANY students (e.g. siblings)</span>
+    students  = models.ManyToManyField(<span class="st">'Student'</span>, blank=<span class="kw">True</span>, related_name=<span class="st">'parents'</span>)
+
+    <span class="kw">def</span> <span class="fn">__str__</span>(self): <span class="kw">return</span> f<span class="st">"{self.full_name} ({self.relation})"</span>
+
+<span class="cm"># Access patterns:</span>
+parent = Parent.objects.prefetch_related(<span class="st">'students__classroom'</span>).get(pk=<span class="nu">1</span>)
+parent.students.all()                         <span class="cm"># all children of this parent</span>
+<span class="kw">for</span> child <span class="kw">in</span> parent.students.all():
+    <span class="kw">print</span>(child.roll_no, child.classroom.name) <span class="cm"># 2024-10A-001  10-A</span>
+
+<span class="cm"># From student side — all parents of a student:</span>
+student.parents.all()                         <span class="cm"># QuerySet[Parent]</span>
+</pre></div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       PART C — RELATIONSHIP MAP
+       ══════════════════════════════════════════════════════════════ -->
+  <h3 class="sub-heading">Part C — Full Relationship Map</h3>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>From</th><th>Relationship</th><th>To</th><th>Field</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>Teacher</code></td><td>OneToOne →</td><td><code>User</code></td><td><code>Teacher.user</code></td><td>Each teacher has exactly one login account</td></tr>
+      <tr><td><code>Student</code></td><td>OneToOne →</td><td><code>User</code></td><td><code>Student.user</code></td><td>Each student has exactly one login account</td></tr>
+      <tr><td><code>NonTeachingStaff</code></td><td>OneToOne →</td><td><code>User</code></td><td><code>NonTeachingStaff.user</code></td><td>Each staff member has exactly one login account</td></tr>
+      <tr><td><code>Parent</code></td><td>OneToOne → (optional)</td><td><code>User</code></td><td><code>Parent.user</code></td><td>Parent may or may not have a portal login</td></tr>
+      <tr><td><code>Classroom</code></td><td>ForeignKey →</td><td><code>Teacher</code></td><td><code>Classroom.class_teacher</code></td><td>One teacher is in-charge of the class</td></tr>
+      <tr><td><code>Student</code></td><td>ForeignKey →</td><td><code>Classroom</code></td><td><code>Student.classroom</code></td><td>A student belongs to one class</td></tr>
+      <tr><td><code>Teacher</code></td><td>ManyToMany ↔</td><td><code>Subject</code></td><td><code>Teacher.subjects</code></td><td>A teacher teaches many subjects; a subject has many teachers</td></tr>
+      <tr><td><code>Classroom</code></td><td>ManyToMany ↔</td><td><code>Subject</code></td><td><code>Classroom.subjects</code></td><td>A class has many subjects in its syllabus</td></tr>
+      <tr><td><code>Parent</code></td><td>ManyToMany ↔</td><td><code>Student</code></td><td><code>Parent.students</code></td><td>A parent can have multiple children; a student can have multiple parents</td></tr>
+      <tr><td><code>AttendanceRecord</code></td><td>ForeignKey →</td><td><code>Student</code></td><td><code>AttendanceRecord.student</code></td><td>Each attendance row belongs to one student</td></tr>
+      <tr><td><code>Mark</code></td><td>ForeignKey →</td><td><code>Student</code></td><td><code>Mark.student</code></td><td>Each grade row belongs to one student for one subject</td></tr>
+      <tr><td><code>Timetable</code></td><td>ForeignKey →</td><td><code>Classroom + Subject + Teacher</code></td><td>3 FK fields</td><td>One time slot = one room + one subject + one teacher</td></tr>
+    </tbody>
+  </table></div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       PART D — GUEST / UNAUTHENTICATED
+       ══════════════════════════════════════════════════════════════ -->
+  <h3 class="sub-heading">Part D — Guest Access</h3>
+  <p class="prose">A <strong>Guest</strong> has no account. In Django REST Framework, guest access means <code>AllowAny</code> permission on public endpoints. No model is needed — the role is expressed in the API permission class, not the database.</p>
+  <div class="cw"><div class="cb"><div class="cb-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><span class="cb-name">How guest vs authenticated roles translate to DRF permissions</span><span class="cb-lang">Python</span></div><pre class="code">
+<span class="kw2">from</span> rest_framework.permissions <span class="kw2">import</span> BasePermission, IsAuthenticated, AllowAny
+
+<span class="kw">class</span> <span class="cl">IsAdminRole</span>(BasePermission):
+    <span class="kw">def</span> <span class="fn">has_permission</span>(self, request, view):
+        <span class="kw">return</span> request.user.is_authenticated <span class="kw">and</span> request.user.role == <span class="st">'admin'</span>
+
+<span class="kw">class</span> <span class="cl">IsTeacherRole</span>(BasePermission):
+    <span class="kw">def</span> <span class="fn">has_permission</span>(self, request, view):
+        <span class="kw">return</span> request.user.is_authenticated <span class="kw">and</span> request.user.role == <span class="st">'teacher'</span>
+
+<span class="kw">class</span> <span class="cl">IsStudentRole</span>(BasePermission):
+    <span class="kw">def</span> <span class="fn">has_permission</span>(self, request, view):
+        <span class="kw">return</span> request.user.is_authenticated <span class="kw">and</span> request.user.role == <span class="st">'student'</span>
+
+<span class="kw">class</span> <span class="cl">IsParentRole</span>(BasePermission):
+    <span class="kw">def</span> <span class="fn">has_permission</span>(self, request, view):
+        <span class="kw">return</span> request.user.is_authenticated <span class="kw">and</span> request.user.role == <span class="st">'parent'</span>
+
+<span class="kw">class</span> <span class="cl">IsNonTeachingRole</span>(BasePermission):
+    <span class="kw">def</span> <span class="fn">has_permission</span>(self, request, view):
+        <span class="kw">return</span> request.user.is_authenticated <span class="kw">and</span> request.user.role == <span class="st">'non_teaching'</span>
+
+
+<span class="cm"># In a ViewSet — combine permissions per action</span>
+<span class="kw">class</span> <span class="cl">StudentViewSet</span>(viewsets.ModelViewSet):
+    <span class="kw">def</span> <span class="fn">get_permissions</span>(self):
+        <span class="kw">if</span> self.action <span class="kw">in</span> [<span class="st">'list'</span>, <span class="st">'retrieve'</span>]:
+            <span class="cm"># admins, teachers, parents can view students</span>
+            <span class="kw">return</span> [(IsAdminRole | IsTeacherRole | IsParentRole)()]
+        <span class="kw">if</span> self.action <span class="kw">in</span> [<span class="st">'create'</span>, <span class="st">'update'</span>, <span class="st">'destroy'</span>]:
+            <span class="kw">return</span> [IsAdminRole()]      <span class="cm"># only admins can modify students</span>
+        <span class="kw">return</span> [IsAuthenticated()]      <span class="cm"># default: any logged-in user</span>
+
+<span class="cm"># Public endpoint (guest access) — no auth needed</span>
+<span class="kw">class</span> <span class="cl">SchoolInfoView</span>(APIView):
+    permission_classes = [AllowAny]   <span class="cm"># guests can see school public info</span>
+</pre></div>
+
+  <!-- ── WHO SEES WHAT ── -->
+  <h3 class="sub-heading">Who Sees What — Access Summary</h3>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Resource</th><th>Admin</th><th>Teacher</th><th>Class Teacher</th><th>Student</th><th>Parent</th><th>Non-Teaching</th><th>Guest</th></tr></thead>
+    <tbody>
+      <tr><td>All students list</td><td>✓ Full</td><td>✓ Own class</td><td>✓ Own class</td><td>✗</td><td>✗</td><td>✗</td><td>✗</td></tr>
+      <tr><td>Student detail</td><td>✓</td><td>✓ Own class</td><td>✓ Own class</td><td>✓ Own only</td><td>✓ Own child</td><td>✗</td><td>✗</td></tr>
+      <tr><td>Attendance — mark</td><td>✓</td><td>✓ Own subject</td><td>✓ Own class</td><td>✗</td><td>✗</td><td>✗</td><td>✗</td></tr>
+      <tr><td>Attendance — view</td><td>✓</td><td>✓ Own class</td><td>✓ Own class</td><td>✓ Own</td><td>✓ Own child</td><td>✗</td><td>✗</td></tr>
+      <tr><td>Grades — enter</td><td>✓</td><td>✓ Own subject</td><td>✗</td><td>✗</td><td>✗</td><td>✗</td><td>✗</td></tr>
+      <tr><td>Grades — view</td><td>✓</td><td>✓ Own subject</td><td>✓ Own class</td><td>✓ Own</td><td>✓ Own child</td><td>✗</td><td>✗</td></tr>
+      <tr><td>Timetable</td><td>✓ CRUD</td><td>✓ View</td><td>✓ View</td><td>✓ View own</td><td>✓ View child's</td><td>✗</td><td>✗</td></tr>
+      <tr><td>Staff records</td><td>✓</td><td>✗</td><td>✗</td><td>✗</td><td>✗</td><td>✓ Own only</td><td>✗</td></tr>
+      <tr><td>School info / contact</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+    </tbody>
+  </table></div>
+</section>
 
 <!-- P1 OVERVIEW -->
 <section class="chapter" id="proj-intro">
